@@ -2,9 +2,14 @@
 
 A command-line tool for managing users, videos, and view records.
 
+## Demo
+
+https://github.com/user-attachments/assets/6f6ab4d4-c156-4404-85e4-8f2e96f72708
+
 ## Setup
 
 ### Prerequisites
+
 - Rust and Cargo
 - PostgreSQL 15+
 - Diesel CLI
@@ -23,6 +28,7 @@ diesel migration run
 ```
 
 ### macOS Library Path (if needed)
+
 ```bash
 export LIBRARY_PATH="/opt/homebrew/opt/postgresql@15/lib:$LIBRARY_PATH"
 ```
@@ -33,14 +39,15 @@ export LIBRARY_PATH="/opt/homebrew/opt/postgresql@15/lib:$LIBRARY_PATH"
 
 ### User Commands
 
-| Command | Description |
-|---------|-------------|
-| `rustflix user create <name> <email>` | Create a new user |
+| Command                                    | Description             |
+| ------------------------------------------ | ----------------------- |
+| `rustflix user create <name> <email>`      | Create a new user       |
 | `rustflix user update <id> <name> <email>` | Update an existing user |
-| `rustflix user delete <id>` | Delete a user |
-| `rustflix user show` | Show all users |
+| `rustflix user delete <id>`                | Delete a user           |
+| `rustflix user show`                       | Show all users          |
 
 **Examples:**
+
 ```bash
 # Create a user
 rustflix user create "John Doe" "john@example.com"
@@ -59,14 +66,15 @@ rustflix user show
 
 ### Video Commands
 
-| Command | Description |
-|---------|-------------|
-| `rustflix video create <title> <description>` | Create a new video |
+| Command                                            | Description              |
+| -------------------------------------------------- | ------------------------ |
+| `rustflix video create <title> <description>`      | Create a new video       |
 | `rustflix video update <id> <title> <description>` | Update an existing video |
-| `rustflix video delete <id>` | Delete a video |
-| `rustflix video show` | Show all videos |
+| `rustflix video delete <id>`                       | Delete a video           |
+| `rustflix video show`                              | Show all videos          |
 
 **Examples:**
+
 ```bash
 # Create a video
 rustflix video create "My Video" "This is a great video"
@@ -85,13 +93,14 @@ rustflix video show
 
 ### View Commands (Watch Records)
 
-| Command | Description |
-|---------|-------------|
-| `rustflix view create <user_id> <video_id> <watch_start> <duration>` | Record a view |
-| `rustflix view show` | Show all views |
-| `rustflix view show-pretty` | Show all views with user/video names |
+| Command                                                              | Description                          |
+| -------------------------------------------------------------------- | ------------------------------------ |
+| `rustflix view create <user_id> <video_id> <watch_start> <duration>` | Record a view                        |
+| `rustflix view show`                                                 | Show all views                       |
+| `rustflix view show-pretty`                                          | Show all views with user/video names |
 
 **Examples:**
+
 ```bash
 # Record a view (user 1 watched video 2 for 120 minutes)
 rustflix view create 1 2 "2024-01-15T10:30:00" 120
