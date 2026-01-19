@@ -4,15 +4,16 @@
 //! Communicates with a local Python/FastAPI server that handles Instagram API.
 
 mod client;
+mod colors;
 mod commands;
 mod crypto;
 mod models;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use colored::Colorize;
 
 use client::ApiClient;
+use colors::Theme;
 
 /// Instagram DM CLI - Manage your Instagram DMs from the terminal
 #[derive(Parser)]
@@ -29,6 +30,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Show the IG DM CLI banner
+    Banner,
+
     /// Login to Instagram (interactive prompts for credentials)
     Login {
         /// Username (optional - will prompt if not provided)
@@ -115,6 +119,11 @@ async fn main() -> Result<()> {
     let client = ApiClient::new(cli.server.as_deref());
 
     match cli.command {
+        Commands::Banner => {
+            colors::print_gradient_banner();
+            Ok(())
+        }
+
         Commands::Login { username, password } => {
             if let (Some(u), Some(p)) = (username.as_ref(), password.as_ref()) {
                 // Non-interactive mode with provided credentials
@@ -122,11 +131,11 @@ async fn main() -> Result<()> {
             } else if let Some(u) = username.as_ref() {
                 // Username provided, prompt for password only
                 use dialoguer::Password;
-                println!("{}", "Instagram Login".bold().cyan());
-                println!("{}", "━".repeat(40).dimmed());
+                println!("{}", Theme::header("Instagram Login"));
+                println!("{}", Theme::separator(40));
                 println!(
                     "{}",
-                    "Your password will be encrypted before transmission.".dimmed()
+                    Theme::muted("Your password will be encrypted before transmission.")
                 );
                 println!();
 

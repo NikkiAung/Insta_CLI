@@ -1,10 +1,10 @@
 //! Send message commands
 
 use anyhow::Result;
-use colored::Colorize;
 use dialoguer::Input;
 
 use crate::client::ApiClient;
+use crate::colors::Theme;
 
 /// Send a message to a user (interactive or with provided message)
 pub async fn send_to_user(client: &ApiClient, username: &str, message: Option<&str>) -> Result<()> {
@@ -19,31 +19,31 @@ pub async fn send_to_user(client: &ApiClient, username: &str, message: Option<&s
     };
 
     if text.trim().is_empty() {
-        println!("{}", "Message cannot be empty.".yellow());
+        println!("{}", Theme::warning("Message cannot be empty."));
         return Ok(());
     }
 
-    println!("{}", format!("Sending to @{}...", username).dimmed());
+    println!("{}", Theme::muted(&format!("Sending to @{}...", username)));
 
     match client.send_to_user(username, &text).await {
         Ok(response) => {
             if response.success {
                 println!(
                     "{} {}",
-                    "✓".green().bold(),
-                    format!("Message sent to @{}", username).green()
+                    Theme::check(),
+                    Theme::success(&format!("Message sent to @{}", username))
                 );
             } else {
                 println!(
                     "{} {}",
-                    "✗".red().bold(),
-                    response.error.unwrap_or("Failed to send message".to_string()).red()
+                    Theme::cross(),
+                    Theme::error(&response.error.unwrap_or("Failed to send message".to_string()))
                 );
             }
             Ok(())
         }
         Err(e) => {
-            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             Err(e)
         }
     }
@@ -66,27 +66,27 @@ pub async fn send_to_thread(
     };
 
     if text.trim().is_empty() {
-        println!("{}", "Message cannot be empty.".yellow());
+        println!("{}", Theme::warning("Message cannot be empty."));
         return Ok(());
     }
 
-    println!("{}", "Sending message...".dimmed());
+    println!("{}", Theme::muted("Sending message..."));
 
     match client.send_to_thread(thread_id, &text).await {
         Ok(response) => {
             if response.success {
-                println!("{} {}", "✓".green().bold(), "Message sent!".green());
+                println!("{} {}", Theme::check(), Theme::success("Message sent!"));
             } else {
                 println!(
                     "{} {}",
-                    "✗".red().bold(),
-                    response.error.unwrap_or("Failed to send message".to_string()).red()
+                    Theme::cross(),
+                    Theme::error(&response.error.unwrap_or("Failed to send message".to_string()))
                 );
             }
             Ok(())
         }
         Err(e) => {
-            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             Err(e)
         }
     }
@@ -94,10 +94,10 @@ pub async fn send_to_thread(
 
 /// Interactive chat with a user by username
 pub async fn chat_with_user(client: &ApiClient, username: &str) -> Result<()> {
-    println!("{} {}", "Chat with".bold().cyan(), format!("@{}", username).bold());
+    println!("{} {}", Theme::header("Chat with"), Theme::username(&format!("@{}", username)));
     println!(
         "{}",
-        "Type your messages. Empty line to exit.".dimmed()
+        Theme::muted("Type your messages. Empty line to exit.")
     );
     println!();
 
@@ -108,24 +108,24 @@ pub async fn chat_with_user(client: &ApiClient, username: &str) -> Result<()> {
             .interact_text()?;
 
         if text.trim().is_empty() {
-            println!("{}", "Exiting chat mode.".dimmed());
+            println!("{}", Theme::muted("Exiting chat mode."));
             break;
         }
 
         match client.send_to_user(username, &text).await {
             Ok(response) => {
                 if response.success {
-                    println!("{}", "✓ Sent".green().dimmed());
+                    println!("{} {}", Theme::check(), Theme::muted("Sent"));
                 } else {
                     println!(
                         "{} {}",
-                        "✗".red(),
-                        response.error.unwrap_or("Failed".to_string()).red()
+                        Theme::cross(),
+                        Theme::error(&response.error.unwrap_or("Failed".to_string()))
                     );
                 }
             }
             Err(e) => {
-                println!("{} {}", "✗".red(), format!("{}", e).red());
+                println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             }
         }
     }

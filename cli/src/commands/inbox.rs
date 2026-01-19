@@ -1,23 +1,23 @@
 //! Inbox and thread commands
 
 use anyhow::Result;
-use colored::Colorize;
 
 use crate::client::ApiClient;
+use crate::colors::Theme;
 use crate::models::Thread;
 use crate::commands::chat_with_user;
 
 /// Display inbox (list of conversations)
 pub async fn show_inbox(client: &ApiClient, limit: u32, unread_only: bool) -> Result<()> {
-    println!("{}", "Fetching inbox...".dimmed());
+    println!("{}", Theme::muted("Fetching inbox..."));
 
     let response = client.get_inbox(limit).await?;
 
     if !response.success {
         println!(
             "{} {}",
-            "✗".red().bold(),
-            response.error.unwrap_or("Failed to fetch inbox".to_string()).red()
+            Theme::cross(),
+            Theme::error(&response.error.unwrap_or("Failed to fetch inbox".to_string()))
         );
         return Ok(());
     }
@@ -33,29 +33,29 @@ pub async fn show_inbox(client: &ApiClient, limit: u32, unread_only: bool) -> Re
 
     if threads.is_empty() {
         if unread_only {
-            println!("{}", "No unread conversations.".dimmed());
+            println!("{}", Theme::muted("No unread conversations."));
         } else {
-            println!("{}", "No conversations found.".dimmed());
+            println!("{}", Theme::muted("No conversations found."));
         }
         return Ok(());
     }
 
     println!();
     if unread_only {
-        println!("{} {}", "Inbox".bold().cyan(), "(unread)".blue());
+        println!("{} {}", Theme::header("Inbox"), Theme::blue("(unread)"));
     } else {
-        println!("{}", "Inbox".bold().cyan());
+        println!("{}", Theme::header("Inbox"));
     }
-    println!("{}", "━".repeat(60).dimmed());
+    println!("{}", Theme::separator(60));
 
     for (i, thread) in threads.iter().enumerate() {
         print_thread_summary(i + 1, thread);
     }
 
-    println!("{}", "━".repeat(60).dimmed());
+    println!("{}", Theme::separator(60));
     println!(
         "{}",
-        format!("Showing {} conversations", threads.len()).dimmed()
+        Theme::muted(&format!("Showing {} conversations", threads.len()))
     );
 
     Ok(())
@@ -63,15 +63,15 @@ pub async fn show_inbox(client: &ApiClient, limit: u32, unread_only: bool) -> Re
 
 /// Display a specific thread with messages
 pub async fn show_thread(client: &ApiClient, thread_id: &str, limit: u32) -> Result<()> {
-    println!("{}", "Fetching messages...".dimmed());
+    println!("{}", Theme::muted("Fetching messages..."));
 
     let response = client.get_thread(thread_id, limit).await?;
 
     if !response.success {
         println!(
             "{} {}",
-            "✗".red().bold(),
-            response.error.unwrap_or("Failed to fetch thread".to_string()).red()
+            Theme::cross(),
+            Theme::error(&response.error.unwrap_or("Failed to fetch thread".to_string()))
         );
         return Ok(());
     }
@@ -79,7 +79,7 @@ pub async fn show_thread(client: &ApiClient, thread_id: &str, limit: u32) -> Res
     let thread = match response.thread {
         Some(t) => t,
         None => {
-            println!("{}", "Thread not found.".dimmed());
+            println!("{}", Theme::muted("Thread not found."));
             return Ok(());
         }
     };
@@ -88,15 +88,15 @@ pub async fn show_thread(client: &ApiClient, thread_id: &str, limit: u32) -> Res
     let participants: Vec<&str> = thread.users.iter().map(|u| u.username.as_str()).collect();
     println!(
         "{} {}",
-        "Conversation with:".bold().cyan(),
-        participants.join(", ").bold()
+        Theme::header("Conversation with:"),
+        Theme::username(&participants.join(", "))
     );
-    println!("{}", "━".repeat(60).dimmed());
+    println!("{}", Theme::separator(60));
 
     let messages = thread.messages.unwrap_or_default();
 
     if messages.is_empty() {
-        println!("{}", "No messages in this thread.".dimmed());
+        println!("{}", Theme::muted("No messages in this thread."));
         return Ok(());
     }
 
@@ -112,19 +112,18 @@ pub async fn show_thread(client: &ApiClient, thread_id: &str, limit: u32) -> Res
             .unwrap_or_default();
 
         println!(
-            "{} {} {}",
-            sender.bold().blue(),
-            time.dimmed(),
-            ""
+            "{} {}",
+            Theme::pink(sender),
+            Theme::timestamp(&time)
         );
         println!("  {}", text);
         println!();
     }
 
-    println!("{}", "━".repeat(60).dimmed());
+    println!("{}", Theme::separator(60));
     println!(
         "{}",
-        format!("Thread ID: {}", thread_id).dimmed()
+        Theme::muted(&format!("Thread ID: {}", thread_id))
     );
 
     Ok(())
@@ -154,7 +153,11 @@ fn print_thread_summary(index: usize, thread: &Thread) {
     };
 
     // Unread indicator
-    let unread = if thread.has_unread.unwrap_or(false) { "●".blue() } else { " ".normal() };
+    let unread = if thread.has_unread.unwrap_or(false) {
+        format!("{}", Theme::unread_dot())
+    } else {
+        " ".to_string()
+    };
 
     // Time
     let time = thread
@@ -166,13 +169,13 @@ fn print_thread_summary(index: usize, thread: &Thread) {
     // Show: "1. Display Name (@username) 13d"
     println!(
         "{:>3}. {} {} {} {}",
-        index.to_string().dimmed(),
-        title.bold(),
-        format!("@{}", username).cyan(),
-        time.dimmed(),
+        Theme::muted(&index.to_string()),
+        Theme::orange(&title),
+        Theme::username(&format!("@{}", username)),
+        Theme::timestamp(&time),
         unread
     );
-    println!("     {} {}", "└".dimmed(), preview);
+    println!("     {} {}", Theme::muted("└"), preview);
 }
 
 /// Format ISO timestamp to relative time
@@ -220,19 +223,19 @@ fn format_time_ago(timestamp: &str) -> String {
 /// Open chat by inbox number (1, 2, 3...)
 pub async fn open_by_number(client: &ApiClient, number: usize) -> Result<()> {
     if number == 0 {
-        println!("{} {}", "✗".red().bold(), "Number must be 1 or greater".red());
+        println!("{} {}", Theme::cross(), Theme::error("Number must be 1 or greater"));
         return Ok(());
     }
 
-    println!("{}", "Fetching inbox...".dimmed());
+    println!("{}", Theme::muted("Fetching inbox..."));
 
     let response = client.get_inbox(number as u32).await?;
 
     if !response.success {
         println!(
             "{} {}",
-            "✗".red().bold(),
-            response.error.unwrap_or("Failed to fetch inbox".to_string()).red()
+            Theme::cross(),
+            Theme::error(&response.error.unwrap_or("Failed to fetch inbox".to_string()))
         );
         return Ok(());
     }
@@ -242,8 +245,8 @@ pub async fn open_by_number(client: &ApiClient, number: usize) -> Result<()> {
     if number > threads.len() {
         println!(
             "{} {}",
-            "✗".red().bold(),
-            format!("No conversation at position {}. You have {} conversations.", number, threads.len()).red()
+            Theme::cross(),
+            Theme::error(&format!("No conversation at position {}. You have {} conversations.", number, threads.len()))
         );
         return Ok(());
     }
@@ -270,7 +273,7 @@ pub async fn show_thread_or_user(client: &ApiClient, target: &str, limit: u32) -
 
 /// Show thread by username (finds the thread first)
 async fn show_thread_by_username(client: &ApiClient, username: &str, limit: u32) -> Result<()> {
-    println!("{}", format!("Finding conversation with @{}...", username).dimmed());
+    println!("{}", Theme::muted(&format!("Finding conversation with @{}...", username)));
 
     // Fetch inbox to find the thread
     let response = client.get_inbox(100).await?;
@@ -278,8 +281,8 @@ async fn show_thread_by_username(client: &ApiClient, username: &str, limit: u32)
     if !response.success {
         println!(
             "{} {}",
-            "✗".red().bold(),
-            response.error.unwrap_or("Failed to fetch inbox".to_string()).red()
+            Theme::cross(),
+            Theme::error(&response.error.unwrap_or("Failed to fetch inbox".to_string()))
         );
         return Ok(());
     }
@@ -298,8 +301,8 @@ async fn show_thread_by_username(client: &ApiClient, username: &str, limit: u32)
         None => {
             println!(
                 "{} {}",
-                "✗".yellow().bold(),
-                format!("No conversation found with @{}", username).yellow()
+                Theme::warn_icon(),
+                Theme::warning(&format!("No conversation found with @{}", username))
             );
             Ok(())
         }

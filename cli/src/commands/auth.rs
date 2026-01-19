@@ -1,18 +1,18 @@
 //! Authentication commands with interactive prompts
 
 use anyhow::Result;
-use colored::Colorize;
 use dialoguer::{Input, Password};
 
 use crate::client::ApiClient;
+use crate::colors::Theme;
 
 /// Interactive login with encrypted password
 pub async fn login_interactive(client: &ApiClient) -> Result<()> {
-    println!("{}", "Instagram Login".bold().cyan());
-    println!("{}", "━".repeat(40).dimmed());
+    println!("{}", Theme::header("Instagram Login"));
+    println!("{}", Theme::separator(40));
     println!(
         "{}",
-        "Your password will be encrypted before transmission.".dimmed()
+        Theme::muted("Your password will be encrypted before transmission.")
     );
     println!();
 
@@ -27,32 +27,32 @@ pub async fn login_interactive(client: &ApiClient) -> Result<()> {
         .interact()?;
 
     println!();
-    println!("{}", "Authenticating...".dimmed());
+    println!("{}", Theme::muted("Authenticating..."));
 
     // Attempt login with encrypted password
     match client.login(&username, &password).await {
         Ok(response) => {
             if response.success {
-                println!("{} {}", "✓".green().bold(), "Login successful!".green());
+                println!("{} {}", Theme::check(), Theme::success("Login successful!"));
                 if let Some(user) = response.user {
                     println!(
                         "  {} {} ({})",
-                        "Logged in as:".dimmed(),
-                        user.username.bold(),
+                        Theme::muted("Logged in as:"),
+                        Theme::username(&user.username),
                         user.full_name.unwrap_or_default()
                     );
                 }
             } else {
                 println!(
                     "{} {}",
-                    "✗".red().bold(),
-                    response.message.unwrap_or("Login failed".to_string()).red()
+                    Theme::cross(),
+                    Theme::error(&response.message.unwrap_or("Login failed".to_string()))
                 );
             }
             Ok(())
         }
         Err(e) => {
-            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             Err(e)
         }
     }
@@ -64,31 +64,31 @@ pub async fn login_with_credentials(
     username: &str,
     password: &str,
 ) -> Result<()> {
-    println!("{}", "Authenticating...".dimmed());
+    println!("{}", Theme::muted("Authenticating..."));
 
     match client.login(username, password).await {
         Ok(response) => {
             if response.success {
-                println!("{} {}", "✓".green().bold(), "Login successful!".green());
+                println!("{} {}", Theme::check(), Theme::success("Login successful!"));
                 if let Some(user) = response.user {
                     println!(
                         "  {} {} ({})",
-                        "Logged in as:".dimmed(),
-                        user.username.bold(),
+                        Theme::muted("Logged in as:"),
+                        Theme::username(&user.username),
                         user.full_name.unwrap_or_default()
                     );
                 }
             } else {
                 println!(
                     "{} {}",
-                    "✗".red().bold(),
-                    response.message.unwrap_or("Login failed".to_string()).red()
+                    Theme::cross(),
+                    Theme::error(&response.message.unwrap_or("Login failed".to_string()))
                 );
             }
             Ok(())
         }
         Err(e) => {
-            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             Err(e)
         }
     }
@@ -96,10 +96,10 @@ pub async fn login_with_credentials(
 
 /// Logout from Instagram
 pub async fn logout(client: &ApiClient) -> Result<()> {
-    println!("{}", "Logging out...".dimmed());
+    println!("{}", Theme::muted("Logging out..."));
 
     client.logout().await?;
-    println!("{} {}", "✓".green().bold(), "Logged out successfully".green());
+    println!("{} {}", Theme::check(), Theme::success("Logged out successfully"));
     Ok(())
 }
 
@@ -107,25 +107,25 @@ pub async fn logout(client: &ApiClient) -> Result<()> {
 pub async fn status(client: &ApiClient) -> Result<()> {
     match client.health().await {
         Ok(health) => {
-            println!("{}", "Server Status".bold().cyan());
-            println!("{}", "━".repeat(40).dimmed());
+            println!("{}", Theme::header("Server Status"));
+            println!("{}", Theme::separator(40));
             println!(
                 "  {} {}",
-                "Server:".dimmed(),
-                health.status.green()
+                Theme::muted("Server:"),
+                Theme::success(&health.status)
             );
             if health.authenticated {
                 println!(
                     "  {} {} ({})",
-                    "Status:".dimmed(),
-                    "Authenticated".green(),
-                    health.username.unwrap_or_default().bold()
+                    Theme::muted("Status:"),
+                    Theme::success("Authenticated"),
+                    Theme::username(&health.username.unwrap_or_default())
                 );
             } else {
                 println!(
                     "  {} {}",
-                    "Status:".dimmed(),
-                    "Not authenticated".yellow()
+                    Theme::muted("Status:"),
+                    Theme::warning("Not authenticated")
                 );
             }
             Ok(())
@@ -133,8 +133,8 @@ pub async fn status(client: &ApiClient) -> Result<()> {
         Err(e) => {
             println!(
                 "{} {} {}",
-                "✗".red().bold(),
-                "Cannot connect to server:".red(),
+                Theme::cross(),
+                Theme::error("Cannot connect to server:"),
                 e
             );
             Err(e)
@@ -148,19 +148,19 @@ pub async fn show_me(client: &ApiClient) -> Result<()> {
         Ok(health) => {
             if health.authenticated {
                 println!();
-                println!("{}", "Current User".bold().cyan());
-                println!("{}", "━".repeat(40).dimmed());
+                println!("{}", Theme::header("Current User"));
+                println!("{}", Theme::separator(40));
                 println!(
-                    "  {} @{}",
-                    "Username:".dimmed(),
-                    health.username.unwrap_or_default().bold()
+                    "  {} {}",
+                    Theme::muted("Username:"),
+                    Theme::username(&format!("@{}", health.username.unwrap_or_default()))
                 );
                 println!();
             } else {
                 println!(
                     "{} {}",
-                    "✗".yellow().bold(),
-                    "Not logged in. Use 'ig login' first.".yellow()
+                    Theme::warn_icon(),
+                    Theme::warning("Not logged in. Use 'ig login' first.")
                 );
             }
             Ok(())
@@ -168,8 +168,8 @@ pub async fn show_me(client: &ApiClient) -> Result<()> {
         Err(e) => {
             println!(
                 "{} {} {}",
-                "✗".red().bold(),
-                "Cannot connect to server:".red(),
+                Theme::cross(),
+                Theme::error("Cannot connect to server:"),
                 e
             );
             Err(e)
@@ -182,58 +182,58 @@ pub async fn search_user(client: &ApiClient, query: &str) -> Result<()> {
     // Remove @ prefix if present
     let username = query.trim_start_matches('@');
 
-    println!("{}", format!("Searching for @{}...", username).dimmed());
+    println!("{}", Theme::muted(&format!("Searching for @{}...", username)));
 
     match client.search_user(username).await {
         Ok(response) => {
             if let Some(user) = response.user {
                 println!();
-                println!("{}", "User Found".bold().cyan());
-                println!("{}", "━".repeat(40).dimmed());
+                println!("{}", Theme::header("User Found"));
+                println!("{}", Theme::separator(40));
                 println!(
-                    "  {} @{}",
-                    "Username:".dimmed(),
-                    user.username.bold()
+                    "  {} {}",
+                    Theme::muted("Username:"),
+                    Theme::username(&format!("@{}", user.username))
                 );
                 if let Some(name) = user.full_name {
                     if !name.is_empty() {
-                        println!("  {} {}", "Name:".dimmed(), name);
+                        println!("  {} {}", Theme::muted("Name:"), name);
                     }
                 }
                 if let Some(verified) = user.is_verified {
                     if verified {
-                        println!("  {} {}", "Verified:".dimmed(), "✓".blue());
+                        println!("  {} {}", Theme::muted("Verified:"), Theme::blue("✓"));
                     }
                 }
                 if let Some(private) = user.is_private {
                     println!(
                         "  {} {}",
-                        "Account:".dimmed(),
-                        if private { "Private".yellow() } else { "Public".green() }
+                        Theme::muted("Account:"),
+                        if private { Theme::warning("Private") } else { Theme::success("Public") }
                     );
                 }
                 if let Some(followers) = user.follower_count {
-                    println!("  {} {}", "Followers:".dimmed(), format_count(followers));
+                    println!("  {} {}", Theme::muted("Followers:"), Theme::accent(&format_count(followers)));
                 }
                 if let Some(following) = user.following_count {
-                    println!("  {} {}", "Following:".dimmed(), format_count(following));
+                    println!("  {} {}", Theme::muted("Following:"), Theme::accent(&format_count(following)));
                 }
                 println!();
                 println!(
                     "{}",
-                    format!("Send message: ig send {} -m \"Hello!\"", user.username).dimmed()
+                    Theme::muted(&format!("Send message: ig send {} -m \"Hello!\"", user.username))
                 );
             } else {
                 println!(
                     "{} {}",
-                    "✗".yellow().bold(),
-                    format!("User @{} not found", username).yellow()
+                    Theme::warn_icon(),
+                    Theme::warning(&format!("User @{} not found", username))
                 );
             }
             Ok(())
         }
         Err(e) => {
-            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            println!("{} {}", Theme::cross(), Theme::error(&format!("{}", e)));
             Err(e)
         }
     }
