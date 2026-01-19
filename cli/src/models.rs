@@ -101,3 +101,23 @@ pub struct Message {
 pub struct ErrorResponse {
     pub detail: String,
 }
+
+/// Search user response
+#[derive(Debug, Deserialize)]
+pub struct SearchUserResponse {
+    pub success: bool,
+    pub user: Option<UserDetails>,
+}
+
+/// Detailed user info from search
+#[derive(Debug, Deserialize)]
+pub struct UserDetails {
+    pub pk: String,
+    pub username: String,
+    pub full_name: Option<String>,
+    pub profile_pic_url: Option<String>,
+    pub is_private: Option<bool>,
+    pub is_verified: Option<bool>,
+    pub follower_count: Option<u64>,
+    pub following_count: Option<u64>,
+}

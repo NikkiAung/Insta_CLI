@@ -5,9 +5,10 @@ use colored::Colorize;
 
 use crate::client::ApiClient;
 use crate::models::Thread;
+use crate::commands::chat_with_user;
 
 /// Display inbox (list of conversations)
-pub async fn show_inbox(client: &ApiClient, limit: u32) -> Result<()> {
+pub async fn show_inbox(client: &ApiClient, limit: u32, unread_only: bool) -> Result<()> {
     println!("{}", "Fetching inbox...".dimmed());
 
     let response = client.get_inbox(limit).await?;
@@ -23,13 +24,28 @@ pub async fn show_inbox(client: &ApiClient, limit: u32) -> Result<()> {
 
     let threads = response.threads.unwrap_or_default();
 
+    // Filter to unread only if flag is set
+    let threads: Vec<_> = if unread_only {
+        threads.into_iter().filter(|t| t.has_unread.unwrap_or(false)).collect()
+    } else {
+        threads
+    };
+
     if threads.is_empty() {
-        println!("{}", "No conversations found.".dimmed());
+        if unread_only {
+            println!("{}", "No unread conversations.".dimmed());
+        } else {
+            println!("{}", "No conversations found.".dimmed());
+        }
         return Ok(());
     }
 
     println!();
-    println!("{}", "Inbox".bold().cyan());
+    if unread_only {
+        println!("{} {}", "Inbox".bold().cyan(), "(unread)".blue());
+    } else {
+        println!("{}", "Inbox".bold().cyan());
+    }
     println!("{}", "━".repeat(60).dimmed());
 
     for (i, thread) in threads.iter().enumerate() {
@@ -198,5 +214,94 @@ fn format_time_ago(timestamp: &str) -> String {
             }
         }
         Err(_) => String::new(),
+    }
+}
+
+/// Open chat by inbox number (1, 2, 3...)
+pub async fn open_by_number(client: &ApiClient, number: usize) -> Result<()> {
+    if number == 0 {
+        println!("{} {}", "✗".red().bold(), "Number must be 1 or greater".red());
+        return Ok(());
+    }
+
+    println!("{}", "Fetching inbox...".dimmed());
+
+    let response = client.get_inbox(number as u32).await?;
+
+    if !response.success {
+        println!(
+            "{} {}",
+            "✗".red().bold(),
+            response.error.unwrap_or("Failed to fetch inbox".to_string()).red()
+        );
+        return Ok(());
+    }
+
+    let threads = response.threads.unwrap_or_default();
+
+    if number > threads.len() {
+        println!(
+            "{} {}",
+            "✗".red().bold(),
+            format!("No conversation at position {}. You have {} conversations.", number, threads.len()).red()
+        );
+        return Ok(());
+    }
+
+    // Get the thread at position (1-indexed)
+    let thread = &threads[number - 1];
+    let username = thread.users.first().map(|u| u.username.as_str()).unwrap_or("unknown");
+
+    // Start chat with this user
+    chat_with_user(client, username).await
+}
+
+/// Show thread by ID or @username
+pub async fn show_thread_or_user(client: &ApiClient, target: &str, limit: u32) -> Result<()> {
+    // Check if target starts with @ (username)
+    if target.starts_with('@') {
+        let username = &target[1..]; // Remove @ prefix
+        show_thread_by_username(client, username, limit).await
+    } else {
+        // Assume it's a thread ID
+        show_thread(client, target, limit).await
+    }
+}
+
+/// Show thread by username (finds the thread first)
+async fn show_thread_by_username(client: &ApiClient, username: &str, limit: u32) -> Result<()> {
+    println!("{}", format!("Finding conversation with @{}...", username).dimmed());
+
+    // Fetch inbox to find the thread
+    let response = client.get_inbox(100).await?;
+
+    if !response.success {
+        println!(
+            "{} {}",
+            "✗".red().bold(),
+            response.error.unwrap_or("Failed to fetch inbox".to_string()).red()
+        );
+        return Ok(());
+    }
+
+    let threads = response.threads.unwrap_or_default();
+
+    // Find thread with this username
+    let thread = threads.iter().find(|t| {
+        t.users.iter().any(|u| u.username.eq_ignore_ascii_case(username))
+    });
+
+    match thread {
+        Some(t) => {
+            show_thread(client, &t.id, limit).await
+        }
+        None => {
+            println!(
+                "{} {}",
+                "✗".yellow().bold(),
+                format!("No conversation found with @{}", username).yellow()
+            );
+            Ok(())
+        }
     }
 }

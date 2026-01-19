@@ -141,3 +141,111 @@ pub async fn status(client: &ApiClient) -> Result<()> {
         }
     }
 }
+
+/// Show current logged-in user info
+pub async fn show_me(client: &ApiClient) -> Result<()> {
+    match client.health().await {
+        Ok(health) => {
+            if health.authenticated {
+                println!();
+                println!("{}", "Current User".bold().cyan());
+                println!("{}", "━".repeat(40).dimmed());
+                println!(
+                    "  {} @{}",
+                    "Username:".dimmed(),
+                    health.username.unwrap_or_default().bold()
+                );
+                println!();
+            } else {
+                println!(
+                    "{} {}",
+                    "✗".yellow().bold(),
+                    "Not logged in. Use 'ig login' first.".yellow()
+                );
+            }
+            Ok(())
+        }
+        Err(e) => {
+            println!(
+                "{} {} {}",
+                "✗".red().bold(),
+                "Cannot connect to server:".red(),
+                e
+            );
+            Err(e)
+        }
+    }
+}
+
+/// Search for a user by username
+pub async fn search_user(client: &ApiClient, query: &str) -> Result<()> {
+    // Remove @ prefix if present
+    let username = query.trim_start_matches('@');
+
+    println!("{}", format!("Searching for @{}...", username).dimmed());
+
+    match client.search_user(username).await {
+        Ok(response) => {
+            if let Some(user) = response.user {
+                println!();
+                println!("{}", "User Found".bold().cyan());
+                println!("{}", "━".repeat(40).dimmed());
+                println!(
+                    "  {} @{}",
+                    "Username:".dimmed(),
+                    user.username.bold()
+                );
+                if let Some(name) = user.full_name {
+                    if !name.is_empty() {
+                        println!("  {} {}", "Name:".dimmed(), name);
+                    }
+                }
+                if let Some(verified) = user.is_verified {
+                    if verified {
+                        println!("  {} {}", "Verified:".dimmed(), "✓".blue());
+                    }
+                }
+                if let Some(private) = user.is_private {
+                    println!(
+                        "  {} {}",
+                        "Account:".dimmed(),
+                        if private { "Private".yellow() } else { "Public".green() }
+                    );
+                }
+                if let Some(followers) = user.follower_count {
+                    println!("  {} {}", "Followers:".dimmed(), format_count(followers));
+                }
+                if let Some(following) = user.following_count {
+                    println!("  {} {}", "Following:".dimmed(), format_count(following));
+                }
+                println!();
+                println!(
+                    "{}",
+                    format!("Send message: ig send {} -m \"Hello!\"", user.username).dimmed()
+                );
+            } else {
+                println!(
+                    "{} {}",
+                    "✗".yellow().bold(),
+                    format!("User @{} not found", username).yellow()
+                );
+            }
+            Ok(())
+        }
+        Err(e) => {
+            println!("{} {}", "✗".red().bold(), format!("{}", e).red());
+            Err(e)
+        }
+    }
+}
+
+/// Format large numbers (1000 -> 1K, 1000000 -> 1M)
+fn format_count(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{:.1}K", n as f64 / 1_000.0)
+    } else {
+        n.to_string()
+    }
+}

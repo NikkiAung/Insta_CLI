@@ -196,4 +196,27 @@ impl ApiClient {
             anyhow::bail!("Failed to send message: {}", resp.status())
         }
     }
+
+    /// Search for a user by username
+    pub async fn search_user(&self, username: &str) -> Result<SearchUserResponse> {
+        let url = format!("{}/user/{}", self.base_url, username);
+        let resp = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .context("Failed to search user")?;
+
+        if resp.status().is_success() {
+            resp.json()
+                .await
+                .context("Failed to parse search response")
+        } else if resp.status().as_u16() == 401 {
+            anyhow::bail!("Not authenticated. Please login first.")
+        } else if resp.status().as_u16() == 404 {
+            anyhow::bail!("User '{}' not found", username)
+        } else {
+            anyhow::bail!("Failed to search user: {}", resp.status())
+        }
+    }
 }

@@ -46,17 +46,36 @@ enum Commands {
     /// Check server status and authentication
     Status,
 
+    /// Show current logged-in user info
+    Me,
+
     /// Show inbox (list of conversations)
     Inbox {
         /// Number of threads to show (default: 20)
         #[arg(short, long, default_value = "20")]
         limit: u32,
+
+        /// Show only unread conversations
+        #[arg(short = 'u', long)]
+        unread: bool,
     },
 
-    /// Show messages in a thread
+    /// Open chat by inbox number (eg: ig open 1)
+    Open {
+        /// Conversation number from inbox (1, 2, 3...)
+        number: usize,
+    },
+
+    /// Search for a user
+    Search {
+        /// Username to search for
+        query: String,
+    },
+
+    /// Show messages in a thread (by ID or @username)
     Thread {
-        /// Thread ID
-        thread_id: String,
+        /// Thread ID or @username
+        target: String,
 
         /// Number of messages to show (default: 20)
         #[arg(short, long, default_value = "20")]
@@ -126,10 +145,16 @@ async fn main() -> Result<()> {
 
         Commands::Status => commands::status(&client).await,
 
-        Commands::Inbox { limit } => commands::show_inbox(&client, limit).await,
+        Commands::Me => commands::show_me(&client).await,
 
-        Commands::Thread { thread_id, limit } => {
-            commands::show_thread(&client, &thread_id, limit).await
+        Commands::Inbox { limit, unread } => commands::show_inbox(&client, limit, unread).await,
+
+        Commands::Open { number } => commands::open_by_number(&client, number).await,
+
+        Commands::Search { query } => commands::search_user(&client, &query).await,
+
+        Commands::Thread { target, limit } => {
+            commands::show_thread_or_user(&client, &target, limit).await
         }
 
         Commands::Send { username, message } => {
